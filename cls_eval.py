@@ -32,7 +32,7 @@ tf.app.flags.DEFINE_bool(
     'eval_once', True,
     'eval the newest ckpt once, if False, eval when a new ckpt available')
 tf.app.flags.DEFINE_integer(
-    'min_interval_secs', 60*5,
+    'min_interval_secs', 60*30,
     'the minimum seconds interval to yield another ckpt')
 tf.app.flags.DEFINE_integer(
     'ckpt_timeout_sec', 5000,
@@ -115,6 +115,14 @@ def make_metric_dict(prob, label, metric_opt):
 
                 metric_dict['accuracy'] = acc_up_ops
                 metric_dict['accuracy_top_%d' % acc_k] = acc_top_k
+            elif em.strip() == 'precision_at_k':
+                prec_k = metric_opt.get('prec_k', 5)
+                _, prec_up_ops = tf.metrics.precision_at_k(
+                    labels=tf.argmax(label, axis=-1),
+                    predictions=prob,
+                    k=prec_k
+                )
+                metric_dict['precision_at_%d'%prec_k] = prec_up_ops
             else:
                 raise Exception('Un-known metrics')
     return metric_dict
