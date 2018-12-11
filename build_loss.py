@@ -28,7 +28,7 @@ def class_weighted_focal_loss(onehot_labels, logits, gamma, alpha):
         # focal loss
         focal_loss = -per_example_alpha * per_example_weight * tf.log(per_example_prob)
         focal_loss = tf.reduce_mean(focal_loss)
-        tf.losses.add_loss(focal_loss)
+        tf.losses.add_loss(focal_loss)  # add to the tf.GraphKey.LOSSES
         return focal_loss
 
 
@@ -40,21 +40,29 @@ def build_loss(logits, labels, endpoints, loss_opt):
             logits_in = tf.identity(logits)
         else:
             raise Exception('logits shape not right: %s'%(logits.shape))
+
         # build main loss
         main_loss_type = loss_opt['main_loss_type']
         if main_loss_type == 'softmax_cross_entropy':
+            tf.logging.info('### use softmax_cross_entropy ###')
             total_loss = tf.losses.softmax_cross_entropy(
                 onehot_labels=labels, logits=logits_in,
                 weights=loss_opt.get('main_loss_weight', 1.0),
                 scope='main_loss')
         elif main_loss_type == 'class_weighted_focal_loss':
+            tf.logging.info('### use class_weighted_focal_loss ###')
             focal_loss_alpha_file = loss_opt.get('focal_loss_alpha_file', None)
             if focal_loss_alpha_file is not None:
                 focal_loss_alpha = _focal_loss_alpha_from_file(focal_loss_alpha_file)
             else:
-                fl_alpha = loss_opt['focal_loss_alpha']
+                fl_alpha = loss_opt.get('focal_loss_alpha', None)
+                if fl_alpha is None:  # no class-balance
+                    tf.logging.info('### No class-balance, use all 1.0 ###')
+                    fl_alpha_long = logits.shape[-1]
+                    fl_alpha_long = fl_alpha_long.value
+                    fl_alpha = [1.0 for _ in range(fl_alpha_long)]
                 focal_loss_alpha = tf.constant(
-                    np.expand_dims(np.array(fl_alpha),axis=0),
+                    np.expand_dims(np.array(fl_alpha), axis=0),
                     dtype=tf.float32, shape=[1, len(fl_alpha)])
             total_loss = class_weighted_focal_loss(
                 onehot_labels=labels, logits=logits_in,
@@ -65,6 +73,7 @@ def build_loss(logits, labels, endpoints, loss_opt):
 
         # add aux loss
         if loss_opt.get('use_aux_loss', False):
+            tf.logging.info('### also use aux_loss ###')
             try:
                 aux_logits = tf.squeeze(endpoints['aux_logits'])
             except:
@@ -81,6 +90,7 @@ def build_loss(logits, labels, endpoints, loss_opt):
 
         # add regularization loss
         if loss_opt.get('use_reg_loss', False):
+            tf.logging.info('### also use reg_loss ###')
             reg_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
             reg_loss = tf.add_n(reg_loss, 'reg_loss')
             total_loss = tf.add(total_loss, reg_loss)

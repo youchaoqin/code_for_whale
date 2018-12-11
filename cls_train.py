@@ -203,7 +203,7 @@ def main(_):
       batch_size=train_cfg['batch_size'],
       num_epoch=int(
           math.ceil(
-              float(train_cfg['iters'])*train_cfg['batch_size']/cls_dataset.num_examples)),
+              float(train_cfg['iters']+1)*train_cfg['batch_size']/cls_dataset.num_examples)),
       shuffle=True,
       aug_opt=train_cfg.get('aug_opt', None),
       crop_size=cfg['corp_size'],)
@@ -328,14 +328,6 @@ def main(_):
       ckpt_saver.save(sess, new_ckpt_path, global_step=train_cfg['iters'])
 
   print("End of Train !!!")
-
-
-
-
-
-
-
-
 
 
 
