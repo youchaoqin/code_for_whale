@@ -212,6 +212,7 @@ def resolve_shape(tensor, rank=None, scope=None):
 
 
 def resize_to_range(image, min_size, max_size):
+    tf.logging.info('### resize to range:[%s, %s]', min_size, max_size)
     with tf.name_scope('resize_to_range', [image]):
         if (min_size is None) and (max_size is None):
             return image

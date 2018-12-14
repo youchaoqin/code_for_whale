@@ -221,7 +221,7 @@ def main(_):
   output_file_path = os.path.join(FLAGS.output_dir, 'submission.csv')
   if os.path.isfile(output_file_path):
       raise Exception("submission file exists!! : %s" % (output_file_path))
-  with open(output_file_path, 'r') as f:
+  with open(output_file_path, 'w') as f:
       f.write('Image,Id\n')
 
   all_files = os.listdir('/home/westwell/Desktop/dolores_storage/'
