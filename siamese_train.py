@@ -168,6 +168,34 @@ def _cfg_from_file(filename):
         cfg = yaml.load(f)
     return cfg
 
+def build_siamese_distance(features, labels,
+                           distance_type, scope='siamese_distance'):
+    assert len(features.shape) == 2, 'require squeezed feature'
+    assert len(labels.shape) == 2, 'require squeezed labels'
+    with tf.name_scope(scope):
+        splited_features1, splited_features2 = tf.split(features, 2, axis=0)
+        if distance_type == 'weighted_l1_distance':
+            with tf.variable_scope(scope):
+                alpha = tf.get_variable(
+                    name='l1_alpha', shape=[1, features.shape[-1]], dtype=tf.float32,
+                    initializer=tf.initializers.constant(1.0), trainable=True,
+                    collections=[tf.GraphKeys.GLOBAL_VARIABLES,
+                                 tf.GraphKeys.MODEL_VARIABLES])
+            distance = tf.subtract(splited_features1, splited_features2)
+            distance = tf.math.abs(distance)
+            distance = tf.reduce_sum(tf.multiply(distance, alpha), axis=-1, keepdims=True)
+        else:
+            raise Exception('distance not impelemented yet %s'%(distance_type))
+
+        # transform labels:
+        t_labels1, t_labels2 = tf.split(labels, 2, axis=0)
+        labels_same_one = tf.math.logical_and(
+            tf.cast(t_labels1, tf.bool), tf.cast(t_labels2, tf.bool))
+        labels_same_one = tf.reduce_sum(
+            tf.cast(labels_same_one, tf.int64), axis=-1, keepdims=True)
+
+    return distance, labels_same_one
+
 
 def main(_):
   os.environ['CUDA_VISIBLE_DEVICES']=FLAGS.gpu
@@ -211,7 +239,7 @@ def main(_):
   ##### get logits ####
   logits, endpoints = feature_extractor.extract_features(
       images=im_batch,
-      num_classes=cls_dataset.num_classes,
+      num_classes=None,
       output_stride=cfg['output_stride'],
       global_pool=True,
       model_variant=cfg['model_variant'],
@@ -223,10 +251,17 @@ def main(_):
       fine_tune_batch_norm=train_cfg.get('fine_turn_batch_norm', False),
       cfg=cfg)
 
-  ##### build loss ####
-  total_loss = build_loss(
-      logits=logits,
+  #### build distance and transform labels####
+  distance, label_same_one = build_siamese_distance(
+      features=logits,
       labels=label_batch,
+      distance_type=cfg['siamese_distance'],
+      scope='siamese_distance')
+
+  ##### build loss ####
+  total_loss = build_loss(  # default to use sigmoid ce for siamese network
+      logits=distance,
+      labels=label_same_one,
       endpoints=endpoints,
       loss_opt=train_cfg['loss_opt'])
 
