@@ -12,6 +12,7 @@ def _focal_loss_alpha_from_file(fl_alpha_file):
     focal_loss_alpha = tf.constant(fl_alpha, dtype=tf.float32, shape=fl_alpha.shape)
     return focal_loss_alpha
 
+
 def class_weighted_focal_loss(onehot_labels, logits, gamma, alpha):
     with tf.name_scope('class_weighted_focal_loss'):
         # per example alpha
@@ -49,6 +50,18 @@ def build_loss(logits, labels, endpoints, loss_opt):
                 onehot_labels=labels, logits=logits_in,
                 weights=loss_opt.get('main_loss_weight', 1.0),
                 scope='main_loss')
+        elif main_loss_type == 'sigmoid_ce_two_class':
+            tf.logging.info('### use sigmoid_cross_entropy ###')
+            main_loss_weight = loss_opt.get('main_loss_weight', 1.0)
+            zero_weight = tf.to_float(
+                tf.equal(labels, 0)) * loss_opt.get('zero_weight', 1.0)
+            one_weight = tf.to_float(
+                tf.equal(labels, 1)) * loss_opt.get('one_weight', 1.0)
+            sigmoid_ce_weight = (zero_weight + one_weight) * main_loss_weight
+            total_loss = tf.losses.sigmoid_cross_entropy(
+                multi_class_labels=labels,
+                logits=logits,
+                weights=sigmoid_ce_weight)
         elif main_loss_type == 'class_weighted_focal_loss':
             tf.logging.info('### use class_weighted_focal_loss ###')
             focal_loss_alpha_file = loss_opt.get('focal_loss_alpha_file', None)

@@ -57,6 +57,7 @@ def parser_humpback_whale(record, phase='train'):
 parse_fn_map = {
     'tiny_imagenet': parser_tiny_image_net,
     'hampback_whale': parser_humpback_whale,
+    'hampback_whale_no_new_whale': parser_humpback_whale,
 }
 
 
@@ -133,7 +134,7 @@ def get_dataset(dataset_folder, split, cfg):
 
 
 def build_input_pipline(phase, dataset, min_resize_value, max_resize_value, batch_size,
-                        num_epoch, shuffle, aug_opt, crop_size):
+                        num_epoch, shuffle, aug_opt, crop_size, drop_remainder=False):
     print("########################## input pipline ##########################")
     with tf.name_scope('Input_Pipline'):
         # parse dataset
@@ -178,8 +179,10 @@ def build_input_pipline(phase, dataset, min_resize_value, max_resize_value, batc
             else:
                 shuffle_buffer_size = SHUFFLE_BUFFER_SIZE
             print('### shuffle with buffer_size: %d ###' % (shuffle_buffer_size))
+            dset = dset.prefetch(8*batch_size)
             dset = dset.shuffle(shuffle_buffer_size)
-        dset = dset.batch(batch_size).repeat(num_epoch)
+        dset = dset.batch(batch_size, drop_remainder=drop_remainder).repeat(num_epoch)
+        dset = dset.prefetch(8)
 
         #### make iterator ####
         iterator = dset.make_one_shot_iterator()  # since we use abolute filenames

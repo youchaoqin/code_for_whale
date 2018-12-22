@@ -34,8 +34,13 @@ def _get_tfrecord_names(folder, split):
     return tfrecord_files
 
 if __name__ == '__main__':
-    tfrecord_folder = '/home/ycq/Desktop/humpback_whale_identification/data/all/tfrecord'
-    split_to_check = ['train', 'val', 'test']
+    tfrecord_folder = '/home/westwell/Desktop/dolores_storage/' \
+                      'humpback_whale_identification/data/all/tfrecord_no_new_whale/'
+    split_to_check = [#'train',
+                      #'val',
+                      #'test',
+                      'train_no_new_whale',
+                    ]
     with open(os.path.join(tfrecord_folder, 'dataset_spec.yml'), 'r') as f:
         dataset_spec = yaml.load(f)
 

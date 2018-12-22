@@ -68,6 +68,12 @@ def _configure_learning_rate(num_samples_per_epoch, global_step, train_cfg):
                                      power=lr_opt['poly_power'],
                                      cycle=False,
                                      name='polynomial_decay_learning_rate')
+  elif lr_opt['lr_policy'] == 'cosine':
+      return tf.train.cosine_decay(learning_rate=lr_opt['learning_rate'],
+                                   global_step=global_step,
+                                   decay_steps=train_cfg['iters'],
+                                   alpha=0.0,
+                                   name='cosine_decay_learning_rate')
   else:
     raise ValueError('learning_rate_decay_type [%s] was not recognized' %
                      lr_opt['lr_policy'])
@@ -170,17 +176,25 @@ def _cfg_from_file(filename):
 
 def build_siamese_distance(features, labels,
                            distance_type, scope='siamese_distance'):
-    assert len(features.shape) == 2, 'require squeezed feature'
-    assert len(labels.shape) == 2, 'require squeezed labels'
+    if len(features.shape) == 4:  # squeeze h, w
+        features = tf.squeeze(features, axis=[1, 2])
+    elif len(features.shape) == 2:
+        pass
+    else:
+        raise Exception('shape of features is not right, '
+                        'require 2 or 4,got: %s'%(features.shape))
+
     with tf.name_scope(scope):
         splited_features1, splited_features2 = tf.split(features, 2, axis=0)
         if distance_type == 'weighted_l1_distance':
             with tf.variable_scope(scope):
                 alpha = tf.get_variable(
                     name='l1_alpha', shape=[1, features.shape[-1]], dtype=tf.float32,
-                    initializer=tf.initializers.constant(1.0), trainable=True,
+                    initializer=tf.initializers.truncated_normal(mean=0.0, stddev=0.2),
+                    trainable=True,
                     collections=[tf.GraphKeys.GLOBAL_VARIABLES,
                                  tf.GraphKeys.MODEL_VARIABLES])
+                tf.summary.histogram('weighted_l1_distance/l1_alpha', alpha)
             distance = tf.subtract(splited_features1, splited_features2)
             distance = tf.math.abs(distance)
             distance = tf.reduce_sum(tf.multiply(distance, alpha), axis=-1, keepdims=True)
@@ -188,11 +202,16 @@ def build_siamese_distance(features, labels,
             raise Exception('distance not impelemented yet %s'%(distance_type))
 
         # transform labels:
-        t_labels1, t_labels2 = tf.split(labels, 2, axis=0)
-        labels_same_one = tf.math.logical_and(
-            tf.cast(t_labels1, tf.bool), tf.cast(t_labels2, tf.bool))
-        labels_same_one = tf.reduce_sum(
-            tf.cast(labels_same_one, tf.int64), axis=-1, keepdims=True)
+        if labels is not None:
+            assert len(labels.shape) == 2, 'require squeezed labels, ' \
+                                           'got: %s'%(labels.shape)
+            t_labels1, t_labels2 = tf.split(labels, 2, axis=0)
+            labels_same_one = tf.math.logical_and(
+                tf.cast(t_labels1, tf.bool), tf.cast(t_labels2, tf.bool))
+            labels_same_one = tf.reduce_sum(
+                tf.cast(labels_same_one, tf.int64), axis=-1, keepdims=True)
+        else:
+            labels_same_one = None
 
     return distance, labels_same_one
 
@@ -234,7 +253,8 @@ def main(_):
               float(train_cfg['iters']+1)*train_cfg['batch_size']/cls_dataset.num_examples)),
       shuffle=True,
       aug_opt=train_cfg.get('aug_opt', None),
-      crop_size=cfg['corp_size'],)
+      crop_size=cfg['corp_size'],
+      drop_remainder=train_cfg.get('drop_remainder', False))
 
   ##### get logits ####
   logits, endpoints = feature_extractor.extract_features(

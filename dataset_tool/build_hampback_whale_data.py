@@ -159,10 +159,14 @@ def _load_clsname_to_index_map(filenname):
     return map_dict
 
 if __name__ == '__main__':
-    base_dir = '/home/ycq/Desktop/humpback_whale_identification/data/all'
-    anno_file = 'train.csv'
-    dataset_splits = ['train', 'test']
-    tfrecord_base_dir = os.path.join(base_dir, 'tfrecord')
+    base_dir = '/home/westwell/Desktop/dolores_storage/' \
+               'humpback_whale_identification/data/all/'
+    anno_file = 'train_no_new_whale.csv'
+    dataset_splits = [#'train',
+                      #'test',
+                      'train_no_new_whale',
+                      ]
+    tfrecord_base_dir = os.path.join(base_dir, 'tfrecord_no_new_whale')
     if not os.path.isdir(tfrecord_base_dir):
         os.mkdir(tfrecord_base_dir)
 
@@ -173,21 +177,25 @@ if __name__ == '__main__':
     # conver each split to tfrecord
     for s in dataset_splits:
         if 'train' in s:
-            train_set_statistics = _convert_dataset(
+            set_statistics = _convert_dataset(
                 split=s,
-                image_folder=os.path.join(base_dir, s),
+                image_folder=os.path.join(base_dir, 'train'),
                 anno_file=os.path.join(base_dir, anno_file),
                 cls_name_to_index=cls_name_to_index,
                 tfrecord_base_dir=tfrecord_base_dir,
                 num_shards=10)
+            with open(os.path.join(base_dir, '%s_set_statistics.yml' % (s)), 'a') as f:
+                yaml.dump(set_statistics, f)
         elif 'test' in s:
-            test_set_statistics = _convert_dataset(
+            set_statistics = _convert_dataset(
                 split=s,
-                image_folder=os.path.join(base_dir, s),
+                image_folder=os.path.join(base_dir, 'test'),
                 anno_file=None,
                 cls_name_to_index=cls_name_to_index,
                 tfrecord_base_dir=tfrecord_base_dir,
                 num_shards=10)
+            with open(os.path.join(base_dir, '%s_set_statistics.yml' % (s)), 'a') as f:
+                yaml.dump(set_statistics, f)
         else:
             raise Exception('Un-know split %s' % (s))
 
@@ -195,11 +203,9 @@ if __name__ == '__main__':
     #         train_set_statistics)
     # np.save(os.path.join(base_dir, 'test_set_statistics.npy'),
     #         test_set_statistics)
-    with open(os.path.join(base_dir, 'train_set_statistics.yml'),'a') as f:
-        yaml.dump(train_set_statistics,f)
 
-    with open(os.path.join(base_dir, 'test_set_statistics.yml'),'a') as f:
-        yaml.dump(test_set_statistics,f)
+
+
 
     # print(train_set_statistics['height_mean'])
     # print(train_set_statistics['height_std'])
