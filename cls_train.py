@@ -68,6 +68,12 @@ def _configure_learning_rate(num_samples_per_epoch, global_step, train_cfg):
                                      power=lr_opt['poly_power'],
                                      cycle=False,
                                      name='polynomial_decay_learning_rate')
+  elif lr_opt['lr_policy'] == 'cosine':
+      return tf.train.cosine_decay(learning_rate=lr_opt['learning_rate'],
+                                   global_step=global_step,
+                                   decay_steps=train_cfg['iters'],
+                                   alpha=0.0,
+                                   name='cosine_decay_learning_rate')
   else:
     raise ValueError('learning_rate_decay_type [%s] was not recognized' %
                      lr_opt['lr_policy'])
