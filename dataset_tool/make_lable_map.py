@@ -4,7 +4,9 @@ import numpy
 
 
 if __name__ == "__main__":
-    label_file_path = '../data/all/train.csv'
+    label_file_path = '/home/westwell/Desktop/dolores_storage/' \
+                      'humpback_whale_identification/data/all/' \
+                      'oversampled_train_no_new_whale_15.csv'
 
     name_to_index_map = {}
     index_to_name_map = {}

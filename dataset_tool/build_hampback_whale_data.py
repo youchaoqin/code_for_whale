@@ -163,7 +163,7 @@ if __name__ == '__main__':
                'humpback_whale_identification/data/all/'
     anno_file = 'train_no_new_whale.csv'
     dataset_splits = [#'train',
-                      #'test',
+                      'test',
                       'train_no_new_whale',
                       ]
     tfrecord_base_dir = os.path.join(base_dir, 'tfrecord_no_new_whale')
