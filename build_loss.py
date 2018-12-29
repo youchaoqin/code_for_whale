@@ -24,6 +24,7 @@ def class_weighted_focal_loss(onehot_labels, logits, gamma, alpha):
         per_example_prob = tf.nn.softmax(logits, axis=-1)
         per_example_prob = tf.multiply(per_example_prob, onehot_labels)
         per_example_prob = tf.reduce_sum(per_example_prob, axis=-1, keepdims=True)
+        per_example_prob = tf.clip_by_value(per_example_prob, 1e-8, 1.0)
         per_example_weight = tf.pow((1.0-per_example_prob), gamma)  # hard example mining
 
         # focal loss

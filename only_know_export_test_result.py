@@ -269,6 +269,7 @@ def main(_):
                       train_new_whale_prob = np.vstack((train_new_whale_prob, one_prob))
               train_new_whale_prob = np.max(train_new_whale_prob, axis=-1)
               train_new_whale_prob = train_new_whale_prob.mean() + train_new_whale_prob.std()
+              #train_new_whale_prob = train_new_whale_prob.mean()
               new_whale_prob = train_new_whale_prob
 
           ##### test #####
