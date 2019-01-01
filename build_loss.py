@@ -13,8 +13,8 @@ def _focal_loss_alpha_from_file(fl_alpha_file):
     return focal_loss_alpha
 
 
-def class_weighted_focal_loss(onehot_labels, logits, gamma, alpha):
-    with tf.name_scope('class_weighted_focal_loss'):
+def class_weighted_softmax_focal_loss(onehot_labels, logits, gamma, alpha):
+    with tf.name_scope('class_weighted_softmax_focal_loss'):
         # per example alpha
         alpha_reshaped = tf.reshape(alpha, shape=[1, onehot_labels.shape[-1]])
         per_example_alpha = tf.multiply(onehot_labels, alpha_reshaped)
@@ -29,6 +29,29 @@ def class_weighted_focal_loss(onehot_labels, logits, gamma, alpha):
 
         # focal loss
         focal_loss = -per_example_alpha * per_example_weight * tf.log(per_example_prob)
+        focal_loss = tf.reduce_mean(focal_loss)
+        tf.losses.add_loss(focal_loss)  # add to the tf.GraphKey.LOSSES
+        return focal_loss
+
+def class_weighted_sigmoid_focal_loss(labels, logits, gamma, alpha):
+    with tf.name_scope('class_weighted_sigmoid_focal_loss'):
+        labels_to_use = tf.to_float(labels)
+
+        # per example hard-example cross-entropy
+        per_example_prob = tf.math.sigmoid(logits)
+
+        zero_mask = tf.to_float(tf.equal(labels_to_use, 0.0))
+        one_mask = tf.to_float(tf.equal(labels_to_use, 1.0))
+        per_example_prob_zero = 1.0 - per_example_prob * zero_mask
+        per_example_prob_one = per_example_prob * one_mask
+
+        pexp_prob = per_example_prob_zero + per_example_prob_one
+        pexp_prob = tf.clip_by_value(pexp_prob, 1e-8, 1.0)
+
+        per_example_weight = tf.pow((1.0-pexp_prob), gamma)  # hard example mining
+
+        # focal loss
+        focal_loss = -alpha * per_example_weight * tf.log(pexp_prob)
         focal_loss = tf.reduce_mean(focal_loss)
         tf.losses.add_loss(focal_loss)  # add to the tf.GraphKey.LOSSES
         return focal_loss
@@ -63,7 +86,20 @@ def build_loss(logits, labels, endpoints, loss_opt):
                 multi_class_labels=labels,
                 logits=logits,
                 weights=sigmoid_ce_weight)
-        elif main_loss_type == 'class_weighted_focal_loss':
+        elif main_loss_type == 'class_weighted_sigmoid_focal_loss':
+            tf.logging.info('### class_weighted_sigmoid_focal_loss ###')
+            main_loss_weight = loss_opt.get('main_loss_weight', 1.0)
+            zero_weight = tf.to_float(
+                tf.equal(labels, 0)) * loss_opt.get('zero_weight', 1.0)
+            one_weight = tf.to_float(
+                tf.equal(labels, 1)) * loss_opt.get('one_weight', 1.0)
+            per_example_alpha = (zero_weight + one_weight) * main_loss_weight
+            total_loss = class_weighted_sigmoid_focal_loss(
+                labels=labels,
+                logits=logits,
+                gamma=loss_opt.get('focal_loss_gamma', 2.0),
+                alpha=per_example_alpha)
+        elif main_loss_type == 'class_weighted_softmax_focal_loss':
             tf.logging.info('### use class_weighted_focal_loss ###')
             focal_loss_alpha_file = loss_opt.get('focal_loss_alpha_file', None)
             if focal_loss_alpha_file is not None:
@@ -78,7 +114,7 @@ def build_loss(logits, labels, endpoints, loss_opt):
                 focal_loss_alpha = tf.constant(
                     np.expand_dims(np.array(fl_alpha), axis=0),
                     dtype=tf.float32, shape=[1, len(fl_alpha)])
-            total_loss = class_weighted_focal_loss(
+            total_loss = class_weighted_softmax_focal_loss(
                 onehot_labels=labels, logits=logits_in,
                 gamma=loss_opt.get('focal_loss_gamma', 2.0),
                 alpha=focal_loss_alpha)
