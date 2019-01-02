@@ -42,7 +42,7 @@ def class_weighted_sigmoid_focal_loss(labels, logits, gamma, alpha):
 
         zero_mask = tf.to_float(tf.equal(labels_to_use, 0.0))
         one_mask = tf.to_float(tf.equal(labels_to_use, 1.0))
-        per_example_prob_zero = 1.0 - per_example_prob * zero_mask
+        per_example_prob_zero = (1.0 - per_example_prob) * zero_mask
         per_example_prob_one = per_example_prob * one_mask
 
         pexp_prob = per_example_prob_zero + per_example_prob_one
