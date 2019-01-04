@@ -25,8 +25,8 @@ tf.app.flags.DEFINE_string(
 tf.app.flags.DEFINE_string(
     'output_dir', None,
     'output dir to save ckpts and summaries.')
-tf.app.flags.DEFINE_float('new_whale_prob', 0.5,
-                           'prob of new_whale')
+tf.app.flags.DEFINE_multi_float(
+    'new_whale_prob', [0.5, 0.4, 0.3, 0.2, 0.1], 'prob of new_whale')
 
 FLAGS = tf.app.flags.FLAGS
 #########################
@@ -215,7 +215,7 @@ def main(_):
       # forward all test images
       filenames = _get_tfrecord_names(
           '/home/westwell/Desktop/dolores_storage/humpback_whale_identification/'
-          'data/all/tfrecord_for_classfication/', 'test')
+          'data/all/tfrecord_no_new_whale/', 'test')
       dataset = tf.data.TFRecordDataset(filenames)
       dataset = dataset.map(lambda record: _parser_humpback_whale(record, 'eval'))
       dataset.batch(batch_size=1)
@@ -246,44 +246,45 @@ def main(_):
 
       # got prob_same_id for every test image and write result
       # submission file
-      output_file_path = os.path.join(
-          FLAGS.output_dir, '..',
-          'submission_%s_%s.csv'%(FLAGS.new_whale_prob, time.time()))
-      if os.path.isfile(output_file_path):
-          raise Exception("submission file exists!! : %s" % (output_file_path))
-      with open(output_file_path, 'w') as f:
-          f.write('Image,Id\n')
+      for nw_prob in FLAGS.new_whale_prob:
+          output_file_path = os.path.join(
+              FLAGS.output_dir, '..',
+              'submission_%s_%s.csv'%(nw_prob, time.time()))
+          if os.path.isfile(output_file_path):
+              raise Exception("submission file exists!! : %s" % (output_file_path))
+          with open(output_file_path, 'w') as f:
+              f.write('Image,Id\n')
 
-      for i in range(len(all_dut_image_names)):
-          if i %100 == 0:
-              print(i, all_dut_image_names[i])
+          for i in range(len(all_dut_image_names)):
+              if i %100 == 0:
+                  print('compare with: %f'%(nw_prob), i, all_dut_image_names[i])
 
-          one_predictions = []
-          one_prob_same_ids = sess.run(
-              tf.get_default_graph().get_tensor_by_name('prob_same_ids:0'),
-              feed_dict={'ref_features:0': all_ref_features,
-                         'dut_features:0': np.expand_dims(all_dut_featurs[i],axis=0)})
-          one_prob_same_ids = np.concatenate(
-              (one_prob_same_ids, [FLAGS.new_whale_prob]), axis=0)
-          one_order = np.argsort(one_prob_same_ids)[::-1]  # prob index
-          one_order = one_order.tolist()
+              one_prob_same_ids = sess.run(
+                  tf.get_default_graph().get_tensor_by_name('prob_same_ids:0'),
+                  feed_dict={'ref_features:0': all_ref_features,
+                             'dut_features:0': np.expand_dims(all_dut_featurs[i],axis=0)})
+              one_prob_same_ids = np.concatenate(
+                  (one_prob_same_ids, [nw_prob]), axis=0)
+              one_order = np.argsort(one_prob_same_ids)[::-1]  # prob index
+              one_order = one_order.tolist()
 
-          for idx in one_order:
-              tmp_prediction = all_ref_cls_name[idx]
-              if tmp_prediction not in one_predictions:
-                  one_predictions.append(tmp_prediction)
-              if len(one_predictions) == 5: # write one result
-                  with open(output_file_path, 'a') as f:
-                      content = os.path.basename(all_dut_image_names[i].decode()) + ','
-                      for j in range(len(one_predictions)):
-                          if j == 0:
-                              content = content + one_predictions[j].decode()
-                          else:
-                              content = content + ' ' + one_predictions[j].decode()
-                      content = content + '\n'
-                      f.write(content)
-                  break  # finish on dut image
-          i += 1
+              one_predictions = []
+              for idx in one_order:
+                  tmp_prediction = all_ref_cls_name[idx]
+                  if tmp_prediction not in one_predictions:
+                      one_predictions.append(tmp_prediction)
+                  if len(one_predictions) == 5: # write one result
+                      with open(output_file_path, 'a') as f:
+                          content = os.path.basename(all_dut_image_names[i].decode()) + ','
+                          for j in range(len(one_predictions)):
+                              if j == 0:
+                                  content = content + one_predictions[j].decode()
+                              else:
+                                  content = content + ' ' + one_predictions[j].decode()
+                          content = content + '\n'
+                          f.write(content)
+                      break  # finish on dut image
+              i += 1
 
 if __name__ == '__main__':
   tf.app.run()
