@@ -14,7 +14,7 @@ def compute_distance(features_a, features_b, d_cfg, is_training=False):
             distances = tf.subtract(features_a, features_b)
             distances = tf.math.abs(distances)
             # get alpha and use it to weight distances
-            with tf.variable_scope('weighted_l1_distance'):
+            with tf.variable_scope(d_cfg['distance_type']):
                 alpha = tf.get_variable(
                     name='l1_alpha', shape=[1, distances.shape[-1]], dtype=tf.float32,
                     initializer=tf.initializers.truncated_normal(mean=0.0, stddev=0.2),
@@ -27,7 +27,7 @@ def compute_distance(features_a, features_b, d_cfg, is_training=False):
     elif d_cfg['distance_type'] == 'learnable_fc_x3':
         # accroding to learning to compare: relation networks for few-shot learning
         # https://arxiv.org/abs/1711.06025
-        with tf.name_scope('learnable_fc1024_1024'):
+        with tf.name_scope(d_cfg['distance_type']):
             concated_features = tf.concat([features_a, features_b], axis=-1)
             net = slim.dropout(concated_features, keep_prob=0.5, is_training=is_training)
             net = slim.fully_connected(
