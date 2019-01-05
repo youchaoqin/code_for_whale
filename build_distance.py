@@ -10,7 +10,7 @@ def compute_distance(features_a, features_b, d_cfg, is_training=False):
     if d_cfg['distance_type'] == 'weighted_l1_distance':
         # accroding to "Siamese neural networks for one-shot image recognition"
         # https://www.cs.cmu.edu/~rsalakhu/papers/oneshot1.pdf
-        with tf.name_scope('weighted_l1_distance'):
+        with tf.name_scope(d_cfg['distance_type']):
             distances = tf.subtract(features_a, features_b)
             distances = tf.math.abs(distances)
             # get alpha and use it to weight distances
@@ -27,7 +27,7 @@ def compute_distance(features_a, features_b, d_cfg, is_training=False):
     elif d_cfg['distance_type'] == 'learnable_fc_x3':
         # accroding to learning to compare: relation networks for few-shot learning
         # https://arxiv.org/abs/1711.06025
-        with tf.name_scope(d_cfg['distance_type']):
+        with tf.variable_scope(d_cfg['distance_type']):
             concated_features = tf.concat([features_a, features_b], axis=-1)
             net = slim.dropout(concated_features, keep_prob=0.5, is_training=is_training)
             net = slim.fully_connected(

@@ -321,7 +321,7 @@ def main(_):
       if train_cfg.get('pretrian_ckpt_file', None) is not None:
           pretrain_ckpt = train_cfg['pretrian_ckpt_file']
           tf.logging.info('restore ckpt from: %s', pretrain_ckpt)
-          vars_to_restore = _var_to_restore(train_cfg.get('exclude_scopes', None))
+          vars_to_restore = _var_to_restore(cfg['distance_config']['distance_type'])
           for v in vars_to_restore:
               print(v.op.name)
           restor_saver = tf.train.Saver(var_list=vars_to_restore)
