@@ -12,6 +12,7 @@ import cv2
 import os
 import feature_extractor
 from build_loss import build_loss
+from build_distance import build_distance_for_pairs_batch
 import matplotlib.pylab as plt
 
 slim = tf.contrib.slim
@@ -175,34 +176,6 @@ def _cfg_from_file(filename):
         cfg = yaml.load(f)
     return cfg
 
-def build_siamese_distance(features, distance_type, scope='siamese_distance'):
-    if len(features.shape) == 4:  # squeeze h, w
-        features = tf.squeeze(features, axis=[1, 2])
-    elif len(features.shape) == 2:
-        pass
-    else:
-        raise Exception('shape of features is not right, '
-                        'require 2 or 4,got: %s'%(features.shape))
-
-    with tf.name_scope(scope):
-        splited_features1, splited_features2 = tf.split(features, 2, axis=0)
-        if distance_type == 'weighted_l1_distance':
-            with tf.variable_scope(scope):
-                alpha = tf.get_variable(
-                    name='l1_alpha', shape=[1, features.shape[-1]], dtype=tf.float32,
-                    initializer=tf.initializers.truncated_normal(mean=0.0, stddev=0.2),
-                    trainable=True,
-                    collections=[tf.GraphKeys.GLOBAL_VARIABLES,
-                                 tf.GraphKeys.MODEL_VARIABLES])
-                tf.summary.histogram('weighted_l1_distance/l1_alpha', alpha)
-            distance = tf.subtract(splited_features1, splited_features2)
-            distance = tf.math.abs(distance)
-            distance = tf.reduce_sum(tf.multiply(distance, alpha), axis=-1, keepdims=True)
-        else:
-            raise Exception('distance not impelemented yet %s'%(distance_type))
-
-    return distance
-
 
 def main(_):
   os.environ['CUDA_VISIBLE_DEVICES']=FLAGS.gpu
@@ -267,10 +240,11 @@ def main(_):
       cfg=cfg)
 
   #### build distance and transform labels####
-  distance = build_siamese_distance(
+  distance = build_distance_for_pairs_batch(
       features=logits,
-      distance_type=cfg['siamese_distance'],
-      scope='siamese_distance')
+      is_training=True,
+      d_cfg=cfg['distance_config'],
+      scope='compute_distance')
 
   ##### build loss ####
   total_loss = build_loss(  # default to use sigmoid ce for siamese network
