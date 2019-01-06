@@ -25,10 +25,18 @@ def compute_distance(features_a, features_b, d_cfg, is_training=False):
             distances = tf.reduce_sum(
                 tf.multiply(distances, alpha), axis=-1, keepdims=True)
     elif d_cfg['distance_type'] == 'learnable_fc_x3':
-        # accroding to learning to compare: relation networks for few-shot learning
+        # accroding to "learning to compare: relation networks for few-shot learning"
         # https://arxiv.org/abs/1711.06025
         with tf.variable_scope(d_cfg['distance_type']):
-            concated_features = tf.concat([features_a, features_b], axis=-1)
+            # the concating order of fatures_a and features_b will not affect the result,
+            # so we concat them randomly during training
+            if is_training:
+                concated_features = tf.cond(
+                    pred=tf.less(tf.random.uniform([], dtype=tf.float32), 0.5),
+                    true_fn= lambda: tf.concat([features_a, features_b], axis=-1),
+                    false_fn=lambda: tf.concat([features_b, features_a], axis=-1),)
+            else:
+                concated_features = tf.concat([features_a, features_b], axis=-1)
             net = slim.dropout(concated_features, keep_prob=0.5, is_training=is_training)
             net = slim.fully_connected(
                 inputs=net,
