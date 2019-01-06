@@ -27,40 +27,42 @@ def compute_distance(features_a, features_b, d_cfg, is_training=False):
     elif d_cfg['distance_type'] == 'learnable_fc_x3':
         # accroding to "learning to compare: relation networks for few-shot learning"
         # https://arxiv.org/abs/1711.06025
-        with tf.variable_scope(d_cfg['distance_type']):
-            # the concating order of fatures_a and features_b will not affect the result,
-            # so we concat them randomly during training
-            if is_training:
-                concated_features = tf.cond(
-                    pred=tf.less(tf.random.uniform([], dtype=tf.float32), 0.5),
-                    true_fn= lambda: tf.concat([features_a, features_b], axis=-1),
-                    false_fn=lambda: tf.concat([features_b, features_a], axis=-1),)
-            else:
-                concated_features = tf.concat([features_a, features_b], axis=-1)
-            net = slim.dropout(concated_features, keep_prob=0.5, is_training=is_training)
-            net = slim.fully_connected(
-                inputs=net,
-                num_outputs=1024,
-                activation_fn=tf.nn.relu,
-                weights_regularizer=slim.l2_regularizer(0.00001),
-                biases_initializer=tf.zeros_initializer(),
-                scope='fc1')
-            net = slim.dropout(net, keep_prob=0.5, is_training=is_training)
-            net = slim.fully_connected(
-                inputs=net,
-                num_outputs=1024,
-                activation_fn=tf.nn.relu,
-                weights_regularizer=slim.l2_regularizer(0.00001),
-                biases_initializer=tf.zeros_initializer(),
-                scope='fc2')
-            net = slim.dropout(net, keep_prob=0.5, is_training=is_training)
-            distances = slim.fully_connected(
-                inputs=net,
-                num_outputs=1,
-                activation_fn=None,
-                weights_regularizer=slim.l2_regularizer(0.00001),
-                biases_initializer=tf.zeros_initializer(),
-                scope='fc3')
+        with tf.name_scope(d_cfg['distance_type']):
+            with tf.variable_scope(d_cfg['distance_type']):
+                # the concating order of fatures_a and features_b will not
+                # affect the result, so we concat them randomly during training
+                if is_training:
+                    concated_features = tf.cond(
+                        pred=tf.less(tf.random.uniform([], dtype=tf.float32), 0.5),
+                        true_fn= lambda: tf.concat([features_a, features_b], axis=-1),
+                        false_fn=lambda: tf.concat([features_b, features_a], axis=-1),)
+                else:
+                    concated_features = tf.concat([features_a, features_b], axis=-1)
+                net = slim.dropout(
+                    concated_features, keep_prob=0.5, is_training=is_training)
+                net = slim.fully_connected(
+                    inputs=net,
+                    num_outputs=1024,
+                    activation_fn=tf.nn.relu,
+                    weights_regularizer=slim.l2_regularizer(0.00001),
+                    biases_initializer=tf.zeros_initializer(),
+                    scope='fc1')
+                net = slim.dropout(net, keep_prob=0.5, is_training=is_training)
+                net = slim.fully_connected(
+                    inputs=net,
+                    num_outputs=1024,
+                    activation_fn=tf.nn.relu,
+                    weights_regularizer=slim.l2_regularizer(0.00001),
+                    biases_initializer=tf.zeros_initializer(),
+                    scope='fc2')
+                net = slim.dropout(net, keep_prob=0.5, is_training=is_training)
+                distances = slim.fully_connected(
+                    inputs=net,
+                    num_outputs=1,
+                    activation_fn=None,
+                    weights_regularizer=slim.l2_regularizer(0.00001),
+                    biases_initializer=tf.zeros_initializer(),
+                    scope='fc3')
     else:
         raise Exception('un-known distance type: %s' % (d_cfg['distance_type']))
     return distances
@@ -87,5 +89,17 @@ def build_distance_for_pairs_batch(
             features_a=splited_features1, features_b=splited_features2,
             d_cfg=d_cfg, is_training=is_training,)
 
-
     return distances
+
+
+def similarity_prob_for_one_query(
+      ref_features, dut_feature, d_cfg, scope='similarity_prob_for_one_query'):
+    """compute similarity prob for one query, for export result only"""
+    with tf.name_scope(scope):
+        dut_feature_to_use = tf.ones_like(ref_features)
+        dut_feature_to_use = tf.multiply(dut_feature_to_use, dut_feature)
+        distances = compute_distance(
+            features_a=dut_feature_to_use, features_b=ref_features,
+            d_cfg=d_cfg, is_training=False, )
+        prob_same_ids = tf.nn.sigmoid(distances, name='prob_same_ids')
+    return prob_same_ids

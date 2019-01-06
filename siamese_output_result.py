@@ -14,6 +14,7 @@ import feature_extractor
 import time
 
 from data_transformation import resize_to_range, corp_image
+from build_distance import similarity_prob_for_one_query
 
 slim = tf.contrib.slim
 
@@ -155,18 +156,18 @@ def main(_):
       tf.float32, shape=[None, feature_for_dst.shape[-1]], name='ref_features')
   dut_feature = tf.placeholder(
       tf.float32, shape=[1, feature_for_dst.shape[-1]], name='dut_features')
-  prob_same_ids = siamese_prob(
+  prob_same_ids = similarity_prob_for_one_query(
       ref_features=ref_features,
       dut_feature=dut_feature,
-      distance_type=cfg['siamese_distance'],
-      scope='siamese_distance')
+      d_cfg=cfg['distance_config'],
+      scope='similarity_prob_for_one_query')
 
   #### set up session config ####
   # session config:
-  sess_cfg = tf.ConfigProto(allow_soft_placement=True,log_device_placement=False)
+  sess_cfg = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
   sess_cfg.gpu_options.allow_growth = True
 
-  #### train the model ####
+  #### do test the model ####
   with tf.Session(config=sess_cfg) as sess:
       # init
       #sess.run(tf.global_variables_initializer())
@@ -260,7 +261,8 @@ def main(_):
                   print('compare with: %f'%(nw_prob), i, all_dut_image_names[i])
 
               one_prob_same_ids = sess.run(
-                  tf.get_default_graph().get_tensor_by_name('prob_same_ids:0'),
+                  tf.get_default_graph().get_tensor_by_name(
+                      'similarity_prob_for_one_query/prob_same_ids:0'),
                   feed_dict={'ref_features:0': all_ref_features,
                              'dut_features:0': np.expand_dims(all_dut_featurs[i],axis=0)})
               one_prob_same_ids = np.concatenate(
