@@ -197,11 +197,11 @@ def main(_):
   with tf.name_scope('make_pred_to_one-hot'):
       if len(distance.shape) == 4:
           distance = tf.squeeze(distance, axis=[-3, -2])
-      elif len(logits.shape) == 2:
+      elif len(distance.shape) == 2:
           distance = tf.identity(distance)
       else:
-          raise Exception('logits shape not right: %s' % (logits.shape))
-      prob = tf.nn.sigmoid(logits=distance)
+          raise Exception('distance shape not right: %s' % (distance.shape))
+      prob = tf.nn.sigmoid(x=distance)
       same_id_batch = tf.to_int64(tf.math.greater(prob, eval_cfg['same_id_threshold']))
       same_id_batch = tf.one_hot(tf.squeeze(same_id_batch, axis=-1),
                            2, on_value=1, off_value=0)
