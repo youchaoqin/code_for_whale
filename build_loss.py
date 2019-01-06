@@ -84,7 +84,7 @@ def build_loss(logits, labels, endpoints, loss_opt):
             sigmoid_ce_weight = (zero_weight + one_weight) * main_loss_weight
             total_loss = tf.losses.sigmoid_cross_entropy(
                 multi_class_labels=labels,
-                logits=logits_in,
+                logits=tf.squeeze(logits_in, axis=-1),
                 weights=sigmoid_ce_weight)
         elif main_loss_type == 'class_weighted_sigmoid_focal_loss':
             tf.logging.info('### class_weighted_sigmoid_focal_loss ###')
@@ -96,7 +96,7 @@ def build_loss(logits, labels, endpoints, loss_opt):
             per_example_alpha = (zero_weight + one_weight) * main_loss_weight
             total_loss = class_weighted_sigmoid_focal_loss(
                 labels=labels,
-                logits=logits_in,
+                logits=tf.squeeze(logits_in, axis=-1),
                 gamma=loss_opt.get('focal_loss_gamma', 2.0),
                 alpha=per_example_alpha)
         elif main_loss_type == 'class_weighted_softmax_focal_loss':
