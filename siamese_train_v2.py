@@ -202,7 +202,7 @@ def main(_):
       split=train_cfg['train_split'],
       cfg=train_cfg['dataset_opt'],
       is_training=True,
-      shuffle=False,
+      shuffle=True,
       num_epoch=int(
           math.ceil(
               float(train_cfg['iters'] + 1) * train_cfg['batch_size'] /
@@ -221,7 +221,7 @@ def main(_):
       aug_opt=train_cfg.get('aug_opt', None),
       crop_size=cfg['corp_size'],
       dataset_spec=dataset_spec,
-      drop_remainder=train_cfg.get('drop_remainder', True)  #since ites a siamese dataset
+      drop_remainder=train_cfg.get('drop_remainder', False)  #since ites a siamese dataset
   )
 
   ##### get logits ####
@@ -239,7 +239,7 @@ def main(_):
       fine_tune_batch_norm=train_cfg.get('fine_turn_batch_norm', False),
       cfg=cfg)
 
-  #### build distance and transform labels####
+  #### build distance ####
   distance = build_distance_for_pairs_batch(
       features=logits,
       is_training=True,

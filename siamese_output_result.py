@@ -59,23 +59,6 @@ def _cfg_from_file(filename):
     return cfg
 
 
-def siamese_prob(ref_features, dut_feature, distance_type, scope='siamese_distance'):
-    if distance_type == 'weighted_l1_distance':
-        alpha = tf.get_variable(
-            name='siamese_distance/l1_alpha',
-            shape=[1, ref_features.shape[-1]], dtype=tf.float32,
-            initializer=tf.initializers.truncated_normal(mean=0.0, stddev=0.2),
-            trainable=False,collections=[tf.GraphKeys.GLOBAL_VARIABLES,
-                                         tf.GraphKeys.MODEL_VARIABLES])
-        distances = tf.abs(tf.subtract(ref_features, dut_feature))
-        distances = tf.reduce_sum(tf.multiply(distances, alpha), axis=-1)
-        prob_same_ids = tf.nn.sigmoid(distances, name='prob_same_ids')
-    else:
-        raise Exception('distance not impelemented yet %s' % (distance_type))
-
-    return prob_same_ids
-
-
 def _parser_humpback_whale(record, phase='train'):
     with tf.name_scope('parser_humpback_whale'):
         features = tf.parse_single_example(

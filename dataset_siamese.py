@@ -108,6 +108,7 @@ def get_siamese_dataset(dataset_folder, split, cfg, is_training=True, shuffle=Tr
 
         filename_dataset = filename_dataset.repeat(num_epoch if is_training else 1)
         if is_training and shuffle:
+            tf.logging.info('#### Training and Shuffle TFrecods ####')
             filename_dataset = filename_dataset.shuffle(buffer_size=num_shards)
 
         siamese_dataset = filename_dataset.apply(tf.contrib.data.parallel_interleave(

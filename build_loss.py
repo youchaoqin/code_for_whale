@@ -35,10 +35,10 @@ def class_weighted_softmax_focal_loss(onehot_labels, logits, gamma, alpha):
 
 def class_weighted_sigmoid_focal_loss(labels, logits, gamma, alpha):
     with tf.name_scope('class_weighted_sigmoid_focal_loss'):
-        labels_to_use = tf.to_float(labels)
+        labels_to_use = tf.squeeze(tf.to_float(labels))
 
         # per example hard-example cross-entropy
-        per_example_prob = tf.math.sigmoid(logits)
+        per_example_prob = tf.squeeze(tf.math.sigmoid(logits))
 
         zero_mask = tf.to_float(tf.equal(labels_to_use, 0.0))
         one_mask = tf.to_float(tf.equal(labels_to_use, 1.0))
@@ -51,6 +51,9 @@ def class_weighted_sigmoid_focal_loss(labels, logits, gamma, alpha):
         per_example_weight = tf.pow((1.0-pexp_prob), gamma)  # hard example mining
 
         # focal loss
+        alpha = tf.squeeze(alpha)
+        per_example_weight = tf.squeeze(per_example_weight)
+        pexp_prob = tf.squeeze(pexp_prob)
         focal_loss = -alpha * per_example_weight * tf.log(pexp_prob)
         focal_loss = tf.reduce_mean(focal_loss)
         tf.losses.add_loss(focal_loss)  # add to the tf.GraphKey.LOSSES
