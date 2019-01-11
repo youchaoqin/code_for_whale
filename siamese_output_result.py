@@ -240,16 +240,16 @@ def main(_):
               f.write('Image,Id\n')
 
           for i in range(len(all_dut_image_names)):
-              if i %100 == 0:
-                  print('compare with: %f'%(nw_prob), i, all_dut_image_names[i])
-
               one_prob_same_ids = sess.run(
                   tf.get_default_graph().get_tensor_by_name(
                       'similarity_prob_for_one_query/prob_same_ids:0'),
                   feed_dict={'ref_features:0': all_ref_features,
                              'dut_features:0': np.expand_dims(all_dut_featurs[i],axis=0)})
               one_prob_same_ids = np.concatenate(
-                  (one_prob_same_ids, [nw_prob]), axis=0)
+                  (np.squeeze(one_prob_same_ids), [nw_prob]), axis=0)
+              if i %100 == 0:
+                  print('compare with: %f'%(nw_prob), i, all_dut_image_names[i],
+                        one_prob_same_ids.min(), one_prob_same_ids.max())
               one_order = np.argsort(one_prob_same_ids)[::-1]  # prob index
               one_order = one_order.tolist()
 

@@ -123,8 +123,8 @@ if __name__ == '__main__':
 
     anno_files = [
                  #'siamese_pairs_5_tiny.csv',
-                 'siamese_pairs_5_val.csv',
-                 #'siamese_pairs_5_train.csv'
+                 #'siamese_pairs_5_val.csv',
+                 'siamese_pairs_5_train.csv'
                 ]
 
     # conver each .csv file to tfrecord
