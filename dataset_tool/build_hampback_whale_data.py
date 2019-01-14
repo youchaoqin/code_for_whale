@@ -161,31 +161,34 @@ def _load_clsname_to_index_map(filenname):
 if __name__ == '__main__':
     base_dir = '/home/westwell/Desktop/dolores_storage/' \
                'humpback_whale_identification/data/all/'
-    anno_file = 'train_no_new_whale.csv'
-    dataset_splits = [#'train',
-                      'test',
-                      'train_no_new_whale',
+    cls_name_to_index_file='cls_name_to_index_has_new_whale.txt'
+    #anno_file = 'train_no_new_whale.csv'
+    dataset_splits = [#'train_all',
+                      #'test',
+                      #'train_no_new_whale',
+                      #'train_exp',
+                      'val_exp',
                       ]
-    tfrecord_base_dir = os.path.join(base_dir, 'tfrecord_no_new_whale')
+    tfrecord_base_dir = os.path.join(base_dir, 'tfrecord_single_image')
     if not os.path.isdir(tfrecord_base_dir):
         os.mkdir(tfrecord_base_dir)
 
     # load the cls_name to index table and conver it to dict
     cls_name_to_index = _load_clsname_to_index_map(
-        os.path.join(base_dir, 'cls_name_to_index.txt'))
+        os.path.join(base_dir, cls_name_to_index_file))
 
     # conver each split to tfrecord
     for s in dataset_splits:
-        if 'train' in s:
+        if ('train' in s) or ('val' in s):
             set_statistics = _convert_dataset(
                 split=s,
                 image_folder=os.path.join(base_dir, 'train'),
-                anno_file=os.path.join(base_dir, anno_file),
+                anno_file=os.path.join(base_dir, s+'.csv'),
                 cls_name_to_index=cls_name_to_index,
                 tfrecord_base_dir=tfrecord_base_dir,
                 num_shards=10)
-            with open(os.path.join(base_dir, '%s_set_statistics.yml' % (s)), 'a') as f:
-                yaml.dump(set_statistics, f)
+            # with open(os.path.join(base_dir, '%s_set_statistics.yml' % (s)), 'a') as f:
+            #     yaml.dump(set_statistics, f)
         elif 'test' in s:
             set_statistics = _convert_dataset(
                 split=s,
@@ -194,8 +197,8 @@ if __name__ == '__main__':
                 cls_name_to_index=cls_name_to_index,
                 tfrecord_base_dir=tfrecord_base_dir,
                 num_shards=10)
-            with open(os.path.join(base_dir, '%s_set_statistics.yml' % (s)), 'a') as f:
-                yaml.dump(set_statistics, f)
+            # with open(os.path.join(base_dir, '%s_set_statistics.yml' % (s)), 'a') as f:
+            #     yaml.dump(set_statistics, f)
         else:
             raise Exception('Un-know split %s' % (s))
 

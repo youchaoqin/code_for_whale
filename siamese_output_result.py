@@ -28,6 +28,15 @@ tf.app.flags.DEFINE_string(
     'output dir to save ckpts and summaries.')
 tf.app.flags.DEFINE_multi_float(
     'new_whale_prob', [0.5, 0.4, 0.3, 0.2, 0.1], 'prob of new_whale')
+tf.app.flags.DEFINE_string(
+    'ref_images_set', None,
+    'reference set')
+tf.app.flags.DEFINE_string(
+    'dut_images_set', None,
+    'images set for test')
+tf.app.flags.DEFINE_bool(
+    'save_features', False,
+    'whether save features before compare, mainly for debugging')
 
 FLAGS = tf.app.flags.FLAGS
 #########################
@@ -91,6 +100,8 @@ def _get_tfrecord_names(folder, split):
 
 
 def main(_):
+  tf_record_base = '/home/westwell/Desktop/dolores_storage/humpback_whale_identification/' \
+                   'data/all/tfrecord_single_image/'
   os.environ['CUDA_VISIBLE_DEVICES'] = FLAGS.gpu
   if FLAGS.cfg_file is None:
     raise ValueError('You must supply the cfg file !')
@@ -164,24 +175,25 @@ def main(_):
       restor_saver.restore(sess, tf.train.latest_checkpoint(FLAGS.output_dir))
 
       # forward all ref images
-      filenames = _get_tfrecord_names(
-          '/home/westwell/Desktop/dolores_storage/humpback_whale_identification/'
-          'data/all/tfrecord_no_new_whale/', 'train_no_new_whale')
+      filenames = _get_tfrecord_names(tf_record_base, FLAGS.ref_images_set)
       dataset = tf.data.TFRecordDataset(filenames)
       dataset = dataset.map(lambda record: _parser_humpback_whale(record, 'eval'))
       dataset.batch(batch_size=1)
       iterator = dataset.make_one_shot_iterator()
-      ref_image, _, _, ref_class_name, _, _ = iterator.get_next()
+      ref_image, _, ref_image_name, ref_class_name, _, _ = iterator.get_next()
 
       all_ref_features = None
       all_ref_cls_name = []
+      all_ref_images_name = []
       i = 0
       while True:
           try:
-              one_ref_image, one_ref_class_name = sess.run([ref_image, ref_class_name])
+              one_ref_image, one_ref_image_name, one_ref_class_name = sess.run(
+                  [ref_image, ref_image_name, ref_class_name])
               if i % 100 == 0:
                   print(i, one_ref_class_name)
               all_ref_cls_name.append(one_ref_class_name)
+              all_ref_images_name.append(one_ref_image_name)
               one_ref_feature = sess.run(
                   tf.get_default_graph().get_tensor_by_name('features_for_dst:0'),
                   feed_dict={'input_image:0': one_ref_image})
@@ -194,26 +206,37 @@ def main(_):
           except tf.errors.OutOfRangeError:
               tf.logging.info('End of forward ref images')
               break
+      if FLAGS.save_features:
+          ref_concated = np.concatenate(
+              (all_ref_features,
+               np.array(all_ref_images_name).reshape((all_ref_features.shape[0],1)),
+               np.array(all_ref_cls_name).reshape((all_ref_features.shape[0], 1))),
+              axis=1)
+          np.save(
+              os.path.join(
+                  FLAGS.output_dir, '..', 'ref_concated_%s.npy'%(FLAGS.ref_images_set)),
+              ref_concated)
       all_ref_cls_name.append('new_whale'.encode(encoding='utf-8'))
 
       # forward all test images
-      filenames = _get_tfrecord_names(
-          '/home/westwell/Desktop/dolores_storage/humpback_whale_identification/'
-          'data/all/tfrecord_no_new_whale/', 'test')
+      filenames = _get_tfrecord_names(tf_record_base, FLAGS.dut_images_set)
       dataset = tf.data.TFRecordDataset(filenames)
       dataset = dataset.map(lambda record: _parser_humpback_whale(record, 'eval'))
       dataset.batch(batch_size=1)
       iterator = dataset.make_one_shot_iterator()
-      dut_image, _, dut_image_name, _, _, _ = iterator.get_next()
+      dut_image, _, dut_image_name, dut_class_name, _, _ = iterator.get_next()
 
       all_dut_featurs = None
+      all_dut_cls_name = []
       all_dut_image_names = []
       i = 0
       while True:
           try:
-              one_dut_image, one_dut_image_name = sess.run([dut_image, dut_image_name])
+              one_dut_image, one_dut_image_name, one_dut_class_name = sess.run(
+                  [dut_image, dut_image_name, dut_class_name])
               if i % 100 == 0:
                   print(i, one_dut_image_name)
+              all_dut_cls_name.append(one_dut_class_name)
               all_dut_image_names.append(one_dut_image_name)
               one_dut_feature = sess.run(
                   tf.get_default_graph().get_tensor_by_name('features_for_dst:0'),
@@ -227,6 +250,16 @@ def main(_):
           except tf.errors.OutOfRangeError:
               tf.logging.info('End of forward dut images')
               break
+      if FLAGS.save_features:
+          dut_concated = np.concatenate(
+              (all_dut_featurs,
+               np.array(all_dut_image_names).reshape((all_dut_featurs.shape[0],1)),
+               np.array(all_dut_cls_name).reshape((all_dut_featurs.shape[0], 1))),
+              axis=1)
+          np.save(
+              os.path.join(
+                  FLAGS.output_dir, '..', 'dut_concated_%s.npy' % (FLAGS.dut_images_set)),
+              dut_concated)
 
       # got prob_same_id for every test image and write result
       # submission file
