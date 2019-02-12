@@ -117,14 +117,14 @@ def _convert_siamese_dataset(
 if __name__ == '__main__':
     base_dir = '/home/westwell/Desktop/dolores_storage/' \
                'humpback_whale_identification/data/all/'
-    tfrecord_base_dir = os.path.join(base_dir, 'tfrecord_siamese_paires_5')
+    tfrecord_base_dir = os.path.join(base_dir, 'tfrecord_siamese_paires_10')
     if not os.path.isdir(tfrecord_base_dir):
         os.mkdir(tfrecord_base_dir)
 
     anno_files = [
                  #'siamese_pairs_5_tiny.csv',
-                 #'siamese_pairs_5_val.csv',
-                 'siamese_pairs_5_train.csv'
+                 'siamese_pairs_10_val.csv',
+                 'siamese_pairs_10_train.csv'
                 ]
 
     # conver each .csv file to tfrecord
